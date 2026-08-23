@@ -1,0 +1,21 @@
+{
+  "name": "minireservas-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "db:init": "node src/db/runMigration.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.0",
+    "vitest": "^3.0.7"
+  }
+}

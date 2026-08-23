@@ -1,0 +1,2 @@
+import { Router } from 'express'; import { listReservations, createReservation, changeStatus } from '../controllers/reservationController.js'; import { asyncHandler } from '../middleware/asyncHandler.js';
+export const reservationsRouter = Router(); reservationsRouter.get('/', asyncHandler(listReservations)); reservationsRouter.post('/', asyncHandler(createReservation)); reservationsRouter.patch('/:id/status', asyncHandler(changeStatus));

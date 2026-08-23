@@ -12,4 +12,8 @@ build/
 .DS_Store
 Thumbs.db
 .vscode/
-.idea/
+.idea/node_modules/
+dist/
+.env
+coverage/
+npm-debug.log*
