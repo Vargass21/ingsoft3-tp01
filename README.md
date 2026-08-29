@@ -1,67 +1,105 @@
 # MiniReservas
 
-Aplicación académica para administrar salas y sus reservas. Arquitectura: **React (Vite) → API REST (Express) → PostgreSQL**.
+Aplicación académica para administrar salas y reservas. Su arquitectura es **React/Vite → nginx → API REST Express → PostgreSQL**.
 
 ## Requisitos
 
-Node.js 22+ y Docker Desktop. Docker se utiliza únicamente para PostgreSQL; el frontend y el backend se ejecutan localmente.
+- Git
+- Docker Desktop, con Docker Compose disponible
 
-## Instalación local
+No se requiere instalar Node.js ni PostgreSQL para el arranque mediante Docker.
 
-1. Copiá `.env.example` como `.env`.
-2. Iniciá PostgreSQL con `docker compose up -d db`.
-3. Inicializá la base con `cd backend`, `npm install` y `npm run db:init`.
-4. En otra terminal: `npm run dev` dentro de `backend`.
-5. En otra terminal: `cd frontend`, `npm install` y `npm run dev`.
+## Arranque desde código
 
-Abrí la URL que muestra Vite (normalmente `http://localhost:5173`).
+En una máquina limpia:
 
-## Backend
+```bash
+git clone https://github.com/Vargass21/ingsoft3-tp01.git
+cd ingsoft3-tp01
+cp .env.example .env
+docker compose up -d --build
+```
 
-Dentro de `backend`:
+En Windows PowerShell, el paso de copia puede ejecutarse así:
 
-- Instalar: `npm install`
-- Desarrollo: `npm run dev`
-- Ejecución normal: `npm start`
-- Tests: `npm test`
-- Crear estructura y datos iniciales: `npm run db:init`
+```powershell
+Copy-Item .env.example .env
+```
 
-## Frontend
+Antes de levantar el sistema, revisá y completá los valores locales de `.env`. No versionar ese archivo ni usar credenciales reales en él.
 
-Dentro de `frontend`:
+Verificá los servicios con:
 
-- Instalar: `npm install`
-- Desarrollo: `npm run dev`
-- Build: `npm run build`
-- Tests: `npm test`
+```bash
+docker compose ps
+```
 
-## Base de datos
+URLs disponibles:
 
-La conexión está centralizada en `backend/src/config.js` y se configura con `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`. No hay secretos en el código. El SQL reproducible está en `backend/migrations/001_init.sql`; incluye Sala A, B y C.
+- Frontend: http://localhost:8080
+- Backend: http://localhost:3000
+- Health directo: http://localhost:3000/api/health
+- Health mediante nginx: http://localhost:8080/api/health
 
-Antes de ejecutar `npm run db:init`, iniciá la base con `docker compose up -d db`. La configuración de `.env.example` ya apunta a esa base en `localhost:5434`; se usa ese puerto para evitar conflictos con instalaciones locales de PostgreSQL. El endpoint `GET /api/health` comprueba también la conexión a la base y devuelve `503` si PostgreSQL no está disponible.
+El frontend React/Vite se compila y nginx sirve los archivos estáticos. El backend es Node.js/Express y PostgreSQL se inicializa automáticamente con `app/backend/migrations/001_init.sql` cuando se crea un volumen nuevo.
 
-## Docker
+## Detener el sistema
 
-Docker Compose levanta solo PostgreSQL. Desde la raíz ejecutá:
+```bash
+docker compose down
+```
 
-`docker compose up -d db`
+Este comando elimina contenedores y red, pero conserva el volumen nombrado de PostgreSQL y sus datos.
 
-Luego ejecutá el backend local con `cd backend; npm run dev` y el frontend local con `cd frontend; npm run dev`. Frontend: `http://localhost:5173`; backend: `http://localhost:3000/api/health`. Para reiniciar la base desde cero: `docker compose down -v` y luego el comando anterior.
+> **Advertencia:** el siguiente comando también elimina el volumen y todos los datos almacenados en PostgreSQL.
+
+```bash
+docker compose down -v
+```
+
+Al levantar nuevamente después de `down -v`, se crea una base vacía y se ejecuta de nuevo `001_init.sql`, con las salas iniciales.
+
+### Levantar usando imágenes publicadas
+
+Para usar las imágenes publicadas en GHCR, sin construir backend ni frontend localmente:
+
+```bash
+docker compose -f docker-compose.registry.yml up -d
+```
+
+Las imágenes públicas son:
+
+- `ghcr.io/vargass21/ingsoft3-tp02-backend:v0.1.0`
+- `ghcr.io/vargass21/ingsoft3-tp02-frontend:v0.1.0`
+
+No se requiere autenticación para descargarlas porque ambos paquetes son públicos.
+
+## Desarrollo local y tests
+
+Los comandos siguientes se conservan para desarrollo local:
+
+- Backend, desde `app/backend`: `npm install`, `npm run dev`, `npm start`, `npm test` y `npm run db:init`.
+- Frontend, desde `app/frontend`: `npm install`, `npm run dev`, `npm run build` y `npm test`.
 
 ## Reglas de negocio
 
 1. La finalización debe ser posterior al inicio.
-2. Las personas deben ser más de cero y no exceder la capacidad.
-3. No hay superposición en una misma sala; las canceladas no bloquean.
+2. La cantidad de personas debe ser positiva y no exceder la capacidad de la sala.
+3. No puede haber superposición en una misma sala; las reservas canceladas no bloquean.
 4. No se reserva una sala inactiva.
-5. Solo se permiten las transiciones de estado indicadas.
+5. Solo se permiten las transiciones de estado definidas.
 6. No se elimina una sala con reservas futuras activas.
 
 ## Estructura
 
-- `backend/src/controllers`: adapta HTTP a servicios.
-- `backend/src/services`: concentra las reglas de negocio testeables.
-- `backend/src/repositories`: consultas parametrizadas a PostgreSQL.
-- `backend/migrations`: definición y datos iniciales de la base.
-- `frontend/src/pages`: las tres pantallas; `components`: componentes pequeños; `services`: cliente API.
+```text
+app/
+  backend/
+  frontend/
+docker-compose.yml
+docker-compose.registry.yml
+README.md
+decisiones.md
+evidencias.md
+images/
+```

@@ -15,7 +15,7 @@ services:
       retries: 10
 
   backend:
-    build: ./app/backend
+    image: ghcr.io/vargass21/ingsoft3-tp02-backend:v0.1.0
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -30,7 +30,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./app/frontend
+    image: ghcr.io/vargass21/ingsoft3-tp02-frontend:v0.1.0
     ports:
       - "8080:80"
     depends_on:

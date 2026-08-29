@@ -4,10 +4,10 @@ const select = `SELECT r.*, rooms.name AS room_name FROM reservations r JOIN roo
 export const reservationRepository = {
   list: async () => (await pool.query(`${select} ORDER BY r.reservation_date DESC, r.start_time DESC`)).rows,
   findById: async (id) => (await pool.query(`${select} WHERE r.id = $1`, [id])).rows[0],
-  hasOverlap: async ({ roomId, date, startTime, endTime }) => (await pool.query(
+  hasOverlap: async ({ roomId, reservationDate, startTime, endTime }) => (await pool.query(
     `SELECT EXISTS(SELECT 1 FROM reservations WHERE room_id = $1 AND reservation_date = $2
       AND status <> 'CANCELADA' AND start_time < $4 AND end_time > $3) AS exists`,
-    [roomId, date, startTime, endTime]
+    [roomId, reservationDate, startTime, endTime]
   )).rows[0].exists,
   create: async ({ roomId, reservedBy, reservationDate, startTime, endTime, peopleCount }) => (await pool.query(
     `INSERT INTO reservations (room_id, reserved_by, reservation_date, start_time, end_time, people_count)
