@@ -1,0 +1,12 @@
+node_modules/
+coverage/
+.nyc_output/
+.git/
+.env
+.env.*
+npm-debug.log*
+tests/
+Dockerfile*
+*.log
+*.tmp
+*.temp
