@@ -1,15 +1,15 @@
 # MiniReservas
 
-Aplicación académica para administrar salas y reservas. Su arquitectura es **React/Vite → nginx → API REST Express → PostgreSQL**.
+Aplicación académica para administrar salas y reservas. La arquitectura en contenedores es **React/Vite → nginx → API REST Express → PostgreSQL**.
 
 ## Requisitos
 
 - Git
 - Docker Desktop, con Docker Compose disponible
 
-No se requiere instalar Node.js ni PostgreSQL para el arranque mediante Docker.
+No se requiere instalar Node.js ni PostgreSQL para el arranque completo con Docker.
 
-## Arranque desde código
+## Arranque completo desde código
 
 En una máquina limpia:
 
@@ -20,19 +20,15 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-En Windows PowerShell, el paso de copia puede ejecutarse así:
+En Windows PowerShell, la copia del archivo puede realizarse así:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Antes de levantar el sistema, revisá y completá los valores locales de `.env`. No versionar ese archivo ni usar credenciales reales en él.
+Antes de levantar el sistema, revisá y completá los valores locales de `.env`. No versionar ese archivo ni usar credenciales reales.
 
-Verificá los servicios con:
-
-```bash
-docker compose ps
-```
+Verificá los servicios con `docker compose ps`.
 
 URLs disponibles:
 
@@ -41,7 +37,7 @@ URLs disponibles:
 - Health directo: http://localhost:3000/api/health
 - Health mediante nginx: http://localhost:8080/api/health
 
-El frontend React/Vite se compila y nginx sirve los archivos estáticos. El backend es Node.js/Express y PostgreSQL se inicializa automáticamente con `app/backend/migrations/001_init.sql` cuando se crea un volumen nuevo.
+El frontend se compila y nginx sirve los archivos estáticos. PostgreSQL se inicializa con `app/backend/migrations/001_init.sql` al crear un volumen nuevo.
 
 ## Detener el sistema
 
@@ -49,9 +45,9 @@ El frontend React/Vite se compila y nginx sirve los archivos estáticos. El back
 docker compose down
 ```
 
-Este comando elimina contenedores y red, pero conserva el volumen nombrado de PostgreSQL y sus datos.
+El comando elimina contenedores y red, pero conserva el volumen nombrado de PostgreSQL y sus datos.
 
-> **Advertencia:** el siguiente comando también elimina el volumen y todos los datos almacenados en PostgreSQL.
+> **Advertencia:** este comando elimina el volumen y todos los datos almacenados en PostgreSQL.
 
 ```bash
 docker compose down -v
@@ -59,7 +55,7 @@ docker compose down -v
 
 Al levantar nuevamente después de `down -v`, se crea una base vacía y se ejecuta de nuevo `001_init.sql`, con las salas iniciales.
 
-### Levantar usando imágenes publicadas
+## Imágenes publicadas
 
 Para usar las imágenes publicadas en GHCR, sin construir backend ni frontend localmente:
 
@@ -74,12 +70,16 @@ Las imágenes públicas son:
 
 No se requiere autenticación para descargarlas porque ambos paquetes son públicos.
 
-## Desarrollo local y tests
+## Desarrollo local y pruebas
 
-Los comandos siguientes se conservan para desarrollo local:
+El modo Docker anterior es el flujo reproducible recomendado. Para desarrollo local también se conservan estos comandos:
 
 - Backend, desde `app/backend`: `npm install`, `npm run dev`, `npm start`, `npm test` y `npm run db:init`.
 - Frontend, desde `app/frontend`: `npm install`, `npm run dev`, `npm run build` y `npm test`.
+
+Para ejecutar el backend local contra PostgreSQL, iniciá solo la base con `docker compose up -d db`. `.env.example` apunta a `localhost:5434`, puerto que se publica para evitar conflictos con instalaciones locales de PostgreSQL. La conexión se configura mediante `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD`; el endpoint `GET /api/health` verifica también la base de datos.
+
+En desarrollo local, Vite informa la URL del frontend, normalmente http://localhost:5173. El SQL reproducible está en `app/backend/migrations/001_init.sql` e incluye Sala A, Sala B y Sala C.
 
 ## Reglas de negocio
 
@@ -103,3 +103,9 @@ decisiones.md
 evidencias.md
 images/
 ```
+
+- `app/backend/src/controllers`: adapta HTTP a servicios.
+- `app/backend/src/services`: concentra las reglas de negocio testeables.
+- `app/backend/src/repositories`: consultas parametrizadas a PostgreSQL.
+- `app/backend/migrations`: definición y datos iniciales de la base.
+- `app/frontend/src/pages`: pantallas; `components`: componentes pequeños; `services`: cliente API.
