@@ -1,3 +1,6 @@
+[![CI](https://github.com/Vargass21/ingsoft3-tp01/actions/workflows/ci.yml/badge.svg)](https://github.com/Vargass21/ingsoft3-tp01/actions/workflows/ci.yml)
+
+
 # MiniReservas
 
 Aplicación académica para administrar salas y reservas. La arquitectura en contenedores es **React/Vite → nginx → API REST Express → PostgreSQL**.
