@@ -109,3 +109,4 @@ images/
 - `app/backend/src/repositories`: consultas parametrizadas a PostgreSQL.
 - `app/backend/migrations`: definición y datos iniciales de la base.
 - `app/frontend/src/pages`: pantallas; `components`: componentes pequeños; `services`: cliente API.
+
