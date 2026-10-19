@@ -30,6 +30,59 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
+      - name: Construir la imagen de tests del backend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./app/backend
+          target: test
+          load: true
+          push: false
+          tags: backend-test:ci
+          cache-from: type=gha,scope=backend-test
+          cache-to: type=gha,mode=max,scope=backend-test
+
+      - name: Ejecutar tests y cobertura del backend
+        run: |
+          mkdir -p "$RUNNER_TEMP/backend-results"
+          docker run --rm \
+            --mount "type=bind,source=$RUNNER_TEMP/backend-results,target=/out" \
+            backend-test:ci
+
+      - name: Publicar resumen de cobertura del backend
+        if: ${{ !cancelled() }}
+        env:
+          PROJECT: Backend
+          COVERAGE_REPORT: ${{ runner.temp }}/backend-results/coverage/coverage-summary.json
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { PROJECT, COVERAGE_REPORT, GITHUB_STEP_SUMMARY } = process.env;
+          try {
+            const { total } = JSON.parse(fs.readFileSync(COVERAGE_REPORT, 'utf8'));
+            const rows = [['Líneas', total.lines], ['Ramas', total.branches]].map(([name, metric]) => {
+              if (![metric.pct, metric.covered, metric.total].every(Number.isFinite)) {
+                throw new Error(`Métrica inválida: ${name}`);
+              }
+              return `| ${name} | ${metric.pct}% | ${metric.covered}/${metric.total} |`;
+            });
+            fs.appendFileSync(GITHUB_STEP_SUMMARY,
+              `### Cobertura ${PROJECT}\n\n| Métrica | Porcentaje | Cubiertos/total |\n| --- | ---: | ---: |\n${rows.join('\n')}\n`);
+          } catch (error) {
+            const message = `${PROJECT}: no se pudo leer un reporte de cobertura válido en ${COVERAGE_REPORT}: ${error.message}`;
+            fs.appendFileSync(GITHUB_STEP_SUMMARY, `### Cobertura ${PROJECT}\n\n${message}\n`);
+            console.error(message);
+            process.exitCode = 1;
+          }
+          NODE
+
+      - name: Publicar reporte completo del backend
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-coverage
+          path: ${{ runner.temp }}/backend-results/coverage/
+          if-no-files-found: error
+
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -52,3 +105,56 @@ jobs:
           tags: frontend:ci
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Construir la imagen de tests del frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: ./app/frontend
+          target: test
+          load: true
+          push: false
+          tags: frontend-test:ci
+          cache-from: type=gha,scope=frontend-test
+          cache-to: type=gha,mode=max,scope=frontend-test
+
+      - name: Ejecutar tests y cobertura del frontend
+        run: |
+          mkdir -p "$RUNNER_TEMP/frontend-results"
+          docker run --rm \
+            --mount "type=bind,source=$RUNNER_TEMP/frontend-results,target=/out" \
+            frontend-test:ci
+
+      - name: Publicar resumen de cobertura del frontend
+        if: ${{ !cancelled() }}
+        env:
+          PROJECT: Frontend
+          COVERAGE_REPORT: ${{ runner.temp }}/frontend-results/coverage/coverage-summary.json
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { PROJECT, COVERAGE_REPORT, GITHUB_STEP_SUMMARY } = process.env;
+          try {
+            const { total } = JSON.parse(fs.readFileSync(COVERAGE_REPORT, 'utf8'));
+            const rows = [['Líneas', total.lines], ['Ramas', total.branches]].map(([name, metric]) => {
+              if (![metric.pct, metric.covered, metric.total].every(Number.isFinite)) {
+                throw new Error(`Métrica inválida: ${name}`);
+              }
+              return `| ${name} | ${metric.pct}% | ${metric.covered}/${metric.total} |`;
+            });
+            fs.appendFileSync(GITHUB_STEP_SUMMARY,
+              `### Cobertura ${PROJECT}\n\n| Métrica | Porcentaje | Cubiertos/total |\n| --- | ---: | ---: |\n${rows.join('\n')}\n`);
+          } catch (error) {
+            const message = `${PROJECT}: no se pudo leer un reporte de cobertura válido en ${COVERAGE_REPORT}: ${error.message}`;
+            fs.appendFileSync(GITHUB_STEP_SUMMARY, `### Cobertura ${PROJECT}\n\n${message}\n`);
+            console.error(message);
+            process.exitCode = 1;
+          }
+          NODE
+
+      - name: Publicar reporte completo del frontend
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: ${{ runner.temp }}/frontend-results/coverage/
+          if-no-files-found: error
