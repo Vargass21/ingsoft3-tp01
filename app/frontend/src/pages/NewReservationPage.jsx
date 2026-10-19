@@ -14,7 +14,7 @@ export function NewReservationPage() {
     event.preventDefault();
 
     try {
-      await submitReservation(form, api);
+      await submitReservation(form, api, rooms);
       setForm(initial);
       setMessage('Reserva creada correctamente');
     } catch (error) {
