@@ -54,3 +54,19 @@ Durante el trabajo encontré un error en el control de superposición de reserva
 4. Uno de los problemas fue que las rutas de ejemplo del TP no coincidían con la estructura real de mi proyecto, porque el backend y el frontend están dentro de app/. Por eso tuve que usar ./app/backend y ./app/frontend como contexto de build.
 
 5. Utilicé inteligencia artificial como apoyo para interpretar la consigna, revisar la configuración del workflow y resolver dudas durante el TP. Todo lo generado fue revisado y probado manualmente mediante los builds locales, los logs de GitHub Actions y el comportamiento real de los Pull Requests y los checks obligatorios.
+
+## TP5 — Testing y cobertura
+
+En TP5 probé reglas observables de reservas y salas: horarios, capacidad, transiciones y eliminación. Extraje la lógica del formulario a `validateReservationForm` y `submitReservation`; esta recibe el cliente API como dependencia. Así se prueba la lógica con strings sin DOM, red ni base de datos.
+
+El backend tiene **14 casos unitarios** en Node. El frontend suma **23**: **19 sin DOM** (12 de formulario y 7 del cliente API, en Node) y **4 de componentes** en jsdom. Vitest aporta `it.each` para variar campos y horarios, `vi.fn()` para observar dependencias y `vi.stubGlobal` para simular `fetch` sin red. El error asíncrono del formulario requirió `findByRole` en las pruebas de componentes.
+
+Uso cobertura V8 de Vitest, informes de texto, HTML y JSON, `coverage.include`/`coverage.exclude` para definir el alcance y `thresholds.lines` como gate. En Docker, Vitest escribe en `/out/coverage`; montar allí el padre `/out` resolvió el `EBUSY` que ocurría al limpiar directamente el punto de montaje `/app/coverage`.
+
+El backend incluye `src/services/**/*.js`: `reservationService`, `roomService` y `errors`, donde viven reglas de negocio. Rutas, controladores, repositorios, middleware, configuración y arranque quedan fuera del alcance elegido; contienen lógica e interacciones con infraestructura, pero esta medición se centra en servicios. Los tests se excluyen con `**/*.{test,spec}.{js,jsx}` y `**/__tests__/**`. El frontend incluye `src/lib/**/*.js`, `src/services/**/*.js`, `src/pages/**/*.jsx` y `src/components/**/*.jsx`, también las pantallas de salas y reservas sin tests directos. Excluye los mismos patrones de tests; `App.jsx`, `main.jsx`, estilos y setup no coinciden con los patrones de inclusión.
+
+Los mínimos iniciales son **80 % de líneas** en backend y **60 %** en frontend. Docker midió backend **84,61 % de líneas / 91,30 % de ramas** y frontend **64,28 % / 92,50 %**. Son mínimos iniciales; elevarlos requiere cubrir más caminos. Cobertura alta tampoco asegura aserciones suficientes: aceptar una reserva de 10 personas para una sala de capacidad 10 verifica el borde permitido, pero no el rechazo de 11 (cubierto por otra prueba). El reporte backend confirma pendiente `!reservation` en `changeStatus`, [reservationService.js, línea 28](app/backend/src/services/reservationService.js#L28). La entrada `id=999` con `findById` devolviendo `null` comprobaría el 404; se deja pendiente por ahora.
+
+Frontend local y Docker cubren **63 líneas**, pero cuentan **104 y 98 líneas**, respectivamente; difieren los totales de `RoomsPage.jsx` y `ReservationsPage.jsx`. Los archivos tienen el mismo contenido; la causa no está determinada. El pipeline medirá dentro de Docker.
+
+Usé ChatGPT como asistencia para diseñar pruebas y configurar cobertura y workflow. Revisé cambios, pruebas, builds e imágenes Docker e informes; `actionlint` no estaba disponible. CI y el bloqueo de merges aún no están comprobados: falta una corrida real en GitHub. Quedan los dos PR de demostración y el tag/release `v5.0.0`; añadiré sus enlaces cuando existan.

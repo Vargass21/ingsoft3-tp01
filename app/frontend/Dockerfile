@@ -1,3 +1,17 @@
+FROM node:22-alpine AS test
+
+ENV COVERAGE_DIR=/out/coverage
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev
+
+COPY src ./src
+COPY vite.config.js ./
+
+CMD ["npm", "run", "test:coverage"]
+
 FROM node:22-alpine AS build
 
 WORKDIR /app
