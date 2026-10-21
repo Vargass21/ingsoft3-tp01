@@ -3,7 +3,7 @@
 - **TP6 — PR con tests verdes y login al registry salteado:** [job backend del PR #28](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425669436). El [job frontend](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425668804) muestra el mismo comportamiento.
 - **TP6 — Corrida de main que publica al final:** [job backend de main, intento exitoso](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39659895341/job/119434626083). La publicación es el último paso propio, después de tests y reportes.
 - **TP6 — Paquetes públicos etiquetados por commit:** [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend), ambos con etiqueta `sha-7c3351128749130ad1973d2dc6d681031d8a698e`. Se consultaron sus manifiestos sin credenciales personales y se comprobó manualmente la descarga con docker pull después de docker logout ghcr.io.
-- **TP6 — URLs de QA y PROD:** [frontend QA](https://minireservas-front-qa.onrender.com) y [frontend PROD](https://minireservas-front-prod.onrender.com). APIs: [QA](https://minireservas-api-qa.onrender.com/api/health) y [PROD](https://minireservas-api-prod.onrender.com/api/health). Servicios inicializados en Render; promoción desde Actions todavía en implementación.
+- **TP6 — URLs de QA y PROD:** [frontend QA](https://minireservas-front-qa.onrender.com) y [frontend PROD](https://minireservas-front-prod.onrender.com). APIs: [QA](https://minireservas-api-qa.onrender.com/api/health) y [PROD](https://minireservas-api-prod.onrender.com/api/health). Promoción por Actions comprobada en QA y PROD, con aprobación humana para producción.
 
 # Decisiones técnicas
 
@@ -86,81 +86,48 @@ Después de integrar el primer PR, git pull --ff-only falló porque mi main loca
 
 Usé ChatGPT y Codex para interpretar la consigna, preparar pruebas y revisar código, configuraciones y documentación. Comprobé los resultados con tests, reportes, builds Docker y Actions. Los commits y pushes los hice personalmente.
 
-## TP6 — Entrega continua (en desarrollo)
+## TP6 — Entrega continua
 
-### Publicación de imágenes verificadas
+### Pipeline y entornos
 
-El backend y el frontend tienen Dockerfiles propios, por lo que el pipeline publica dos imágenes en GHCR: `ghcr.io/vargass21/ingsoft3-tp01-backend` y `ghcr.io/vargass21/ingsoft3-tp01-frontend`. Cada imagen lleva la etiqueta `sha-<commit>` para identificar el código que la produjo. La publicación y el acceso público de los paquetes todavía deben comprobarse en GitHub; esta configuración local no demuestra que ya estén publicados.
+Implementé Continuous Delivery: QA se actualiza automáticamente y PROD necesita mi aprobación. Continuous Deployment no tendría ese paso humano. Lo mantuve porque necesito revisar la aplicación antes de publicarla.
 
-En cada job, primero se ejecutan los tests y el control de cobertura del TP5, después se generan los reportes y finalmente se construye la imagen de ejecución. Ese último paso publica solamente cuando el evento es un push a main. En un PR se verifica y construye, pero no se inicia sesión en GHCR ni se publica. Los pasos de publicación mantienen la condición de éxito predeterminada: no usan always(), !cancelled() ni continue-on-error para saltarse una falla previa.
+Las dos imágenes se publican en GHCR con la etiqueta sha-<commit>. La garantía tiene tres partes: main exige los checks verdes, solo main publica y publicar es el último paso del job que ejecuta los tests. Si publicara con tests fallidos, el registry dejaría de representar versiones verificadas. Esto no impide una publicación manual con permisos. Comprobé la descarga de ambos paquetes sin credenciales.
 
-La confianza en lo publicado depende de tres controles: la protección de main exige los checks verdes, solo main publica y la publicación queda al final del mismo job que verifica. La protección de rama debe mantenerse activa. Si se publicara aun con verificaciones fallidas, encontrar una imagen en el registry dejaría de indicar que superó los controles del pipeline. Esta cadena no impide una publicación manual por alguien con permisos, y cada job garantiza sus propias verificaciones: si falla frontend, backend puede haber publicado su imagen, aunque la promoción de la aplicación deberá exigir ambos jobs verdes.
+Usé cuatro servicios Docker en Render, todos con Auto-Deploy Off, y dos bases en Neon: app_qa y app_prod. Creé las tablas ejecutando el SQL del proyecto en cada base. La sala SOLO PROD TP6 aparece únicamente en PROD; una reserva creada desde QA persistió al recargar y no apareció en PROD. Así comprobé la separación de datos.
 
-Los permisos contents: read y packages: write se declaran en cada job que publica. El primero permite leer el repositorio; el segundo, publicar paquetes mediante GITHUB_TOKEN, sin guardar una credencial adicional. Los nombres de las imágenes se escriben en minúsculas porque el usuario de GitHub contiene una mayúscula. Una etiqueta por commit aporta trazabilidad, pero puede reemplazarse; un digest identifica el contenido de la imagen.
+La imagen del frontend contiene la aplicación y una plantilla de nginx. BACKEND_URL y DNS_RESOLVER se reciben al arrancar; DATABASE_URL se configura en cada backend. Probé la misma imagen local apuntando a ambas APIs. Las bases comparten propietario, aunque sus datos están separados.
 
-### Uso de IA y verificación hasta este punto
+### Promoción y aprobación
 
-Usé Codex para interpretar la consigna, revisar el pipeline existente y preparar los cambios de publicación y esta explicación. Se revisó el diff y se comprobó que los pasos finales quedan después de los tests y reportes. Quedan pendientes la corrida del PR, la corrida de main y la descarga anónima de ambos paquetes. Los commits y pushes los realizo personalmente.
+needs hace que QA espere los dos builds y que PROD espere a QA. El if permite desplegar solo desde un push a main. Cada job usa su environment: qa guarda los hooks de QA y production los de PROD. Los secrets de producción quedan disponibles para su job después de aprobar. GITHUB_TOKEN publica las imágenes con permisos por job.
 
+Los hooks reciben &ref=$GITHUB_SHA para desplegar el commit verificado, aunque main avance. concurrency evita jobs de PROD simultáneos, pero debo rechazar aprobaciones viejas para no retroceder de versión.
 
-### Bases de datos y conexión con Neon
+Antes de aprobar reviso checks, smoke, commit Live en ambos servicios QA y funcionamiento de la interfaz. [Rechacé una corrida](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39682036907) porque faltaba probar la creación de una reserva. Después hice esa prueba y [aprobé la siguiente](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39683365010): el subtítulo nuevo apareció en PROD y ambos servicios quedaron Live con 7ccef78.
 
-Creé app_qa y app_prod en el mismo proyecto y rama de Neon, usando PostgreSQL 16 como en Compose. Ejecuté el script existente app/backend/migrations/001_init.sql desde SQL Editor, una vez en cada base. El script crea rooms y reservations y agrega tres salas iniciales. Comprobé current_database() y los conteos: tres salas y cero reservas en cada base. Crear el esquema manualmente es suficiente para este TP; futuras modificaciones requerirán gestionar migraciones. Las bases comparten el rol propietario: los datos están separados, pero las credenciales no limitan el acceso a una sola base.
+### Smoke y límites
 
-El backend acepta DATABASE_URL para recibir la conexión completa del entorno de Render. Si existe, tiene prioridad sobre las variables DB_*; si no existe, conserva la configuración local anterior. node-postgres recibe la URI con sus parámetros TLS, sin agregar una configuración SSL contradictoria ni incluir contraseñas en el código. La conexión real desde Render queda pendiente de comprobar.
+El smoke comprueba /api/health, /api/rooms, la página y el acceso a la API desde nginx. Hace hasta 30 intentos, con espera de 20 segundos y timeout de 10 por petición; si no responde, falla. Esto tolera el arranque lento, pero no prueba todas las reglas de reservas ni identifica la versión.
 
-La primera publicación desde main falló con permission_denied: read_package porque los paquetes existentes no tenían habilitado el acceso del repositorio desde Actions. Se otorgó Write a ingsoft3-tp01 en Manage Actions access de ambos paquetes y se reejecutaron los jobs del mismo commit: finalizaron verdes. Los paquetes quedaron públicos y se comprobó su descarga sin credenciales.
+Lo vi en una corrida: QA dio verde en tres segundos y Render tardó unos 24 en desplegar. Estaba respondiendo la versión anterior. Por eso también revisé el commit Live en Render. Además, Render reconstruye el código: es el mismo commit, pero no garantiza la misma imagen de GHCR. Una dependencia podría cambiar entre construcciones; desplegar esa imagen queda para TP7.
 
-Codex asistió en la adaptación de la configuración para Neon y en la documentación. Las credenciales se guardan fuera del repositorio. Los commits y pushes continúan siendo manuales.
+Render comparte 750 horas mensuales entre los cuatro servicios y ofrece 500 minutos de construcción en Hobby. Los servicios duermen y pueden tardar unos 50 segundos o más en despertar; por eso uso reintentos y no pings permanentes. Presupuesté 240 horas para dos horas diarias por servicio y 200 minutos para diez promociones de cuatro builds de cinco minutos. Son estimaciones: debo revisar Billing y mantener las URLs hasta la defensa. Sin cuota pueden suspenderse servicios o builds, aunque la versión vieja siga respondiendo. [Límites](https://render.com/docs/free) y [builds](https://render.com/docs/build-pipeline).
 
+Neon también pausa el cómputo y ambas bases comparten recursos. La consola mostró 1 GB gratuito por proyecto, según la [actualización de octubre](https://neon.com/blog/neon-free-plan-1-gb-per-project).
 
-### Configuración del frontend al arrancar e independencia de datos
+### Estrategia y rollback
 
-Los backends de QA y PROD se crearon como Web Services Docker en Render, con el plan Free, raíz app/backend, puerto 3000, health check /api/health y Auto-Deploy desactivado. Cada servicio recibe su DATABASE_URL de Neon. Estas construcciones iniciales preparan los servicios; todavía no constituyen la evidencia de promoción disparada por Actions.
+Para usuarios reales elegiría blue-green: preparar otra instalación y cambiar el tráfico después de probarla permite volver rápido. Cuesta mantener ambas y hoy faltan enrutamiento, métricas de errores, tiempos de respuesta y alertas. Las migraciones de base deben ser compatibles con las dos versiones. No implementé ese patrón en este TP.
 
-Se comprobó HTTP 200 en /api/health y /api/rooms de ambos servicios. Para verificar el aislamiento, se insertó la sala SOLO PROD TP6 directamente en app_prod mediante SQL Editor. La API de producción la devolvió y la de QA no: esto comprueba que no están utilizando la misma base. URLs de API: https://minireservas-api-qa.onrender.com y https://minireservas-api-prod.onrender.com. Los frontends y la automatización de despliegue siguen pendientes.
+Ante un fallo, identifico el servicio afectado, busco la última versión buena en Render Deploys, selecciono Rollback, espero Live y verifico interfaz y API. Si afecta al backend, también debo recuperar una versión compatible.
 
-El frontend conserva /api como ruta relativa en su build Docker. La dirección concreta del backend deja de estar fijada en nginx.conf: default.conf.template se procesa al arrancar el contenedor con BACKEND_URL y DNS_RESOLVER. Por defecto utiliza http://backend:3000 y el DNS de Docker para mantener Compose. En Render se configurará la URL HTTPS de la API del entorno y un resolver público. proxy_ssl_server_name habilita SNI para la conexión HTTPS al backend. La imagen contiene los archivos del frontend y la plantilla; la dirección del backend y el resolver se pueden reemplazar sin reconstruirla. BACKEND_URL debe contener solo el origen, sin barra final ni /api.
+Probé volver el frontend de 7ccef78 a a17b2fd: desapareció el subtítulo. Render midió **10,8 segundos** en el [rollback](https://dashboard.render.com/web/srv-dbciq0vavr4c73d13gc0/deploys/dep-dbcjfi59fdbs73a2pbrg). Luego [restauré 7ccef78](https://dashboard.render.com/web/srv-dbciq0vavr4c73d13gc0/deploys/dep-dbcjh04s728c73f875fg) y el texto volvió. Medí solo el frontend usando un despliegue guardado; no diagnóstico, backend ni reconstrucción. El rollback manual de Render no pasa por el gate de GitHub. Los datos no cambian: recuperarlos requeriría backups y otro procedimiento.
 
-Codex asistió con esta adaptación y su documentación. Se construyó minireservas-front-tp6:local una sola vez y se ejecutó con valores por defecto y con las URLs de QA y PROD. Se inspeccionaron las configuraciones generadas y nginx -t fue exitoso. Dos contenedores con el mismo identificador de imagen sirvieron /api/rooms a través de nginx: QA devolvió tres salas y PROD cuatro, incluyendo SOLO PROD TP6. La raíz del frontend también respondió. Se eliminaron los contenedores de prueba; falta desplegar los frontends en Render.
+### Problemas y uso de IA
 
+La publicación falló con permission_denied: read_package. Lo resolví dando acceso Write al repositorio en Manage Actions access de ambos paquetes y repitiendo los jobs. También adapté las rutas app/backend y app/frontend, agregué DATABASE_URL para Neon y reemplacé la dirección fija de nginx por la plantilla.
 
-### Promoción automática a QA
+Usé ChatGPT y Codex para entender la consigna, preparar configuración y workflows y redactar la documentación. Lo comprobé con tests, Docker, consultas HTTP, la reserva en QA, Actions y el rollback real. Hice personalmente los commits, pushes y las operaciones en las plataformas. El PR #26 del TP5 sigue abierto sin cambios.
 
-El job deploy-qa depende de build-backend y build-frontend mediante needs: si falla cualquiera, no despliega. Su if exige push a main, por lo que los PRs verifican sin desplegar. environment: qa conecta el job a los dos environment secrets RENDER_HOOK_API_QA y RENDER_HOOK_FRONT_QA y al historial de deployments. QA no tiene required reviewers. Se comprobó que ambos nombres existen en ese environment; GitHub no permite recuperar sus valores.
-
-Los hooks reciben &ref=$GITHUB_SHA para solicitar el commit de esta corrida en vez de la punta cambiante de main. Las respuestas del hook se descartan para evitar imprimir información innecesaria. Antes de llamar al proveedor se comprueba que ambos secrets tengan valor. Auto-Deploy permanece Off en los cuatro servicios según su configuración de creación, para que los próximos despliegues dependan del pipeline.
-
-Después de solicitar ambos despliegues, el smoke prueba /api/health (incluye SELECT 1), /api/rooms (requiere el esquema), la raíz del frontend y /api/rooms a través de nginx. Reintenta hasta 30 veces, espera 20 segundos entre intentos y limita cada petición a 10 segundos. El tiempo total no es exactamente diez minutos: también incluye lo que tarde cada petición. Agotados los intentos, termina con exit 1 y falla el job. Los reintentos toleran arranques lentos y servicios dormidos.
-
-Limitación: el hook acepta la solicitud antes de terminar la construcción de Render; mientras tanto puede responder la versión anterior, incluso si la construcción nueva falla. El smoke comprueba disponibilidad y conectividad, no la identidad del commit que corre. En la primera promoción se deben abrir Deploys de ambos servicios de QA y comprobar commit y estado Live. Render reconstruye desde el repositorio: coincide el commit solicitado, pero no se garantiza identidad con la imagen de GHCR. La verificación automática de versión y el despliegue del artefacto publicado quedan como evolución del TP7.
-
-Los cuatro servicios iniciales ya respondieron por HTTP; el frontend de PROD devolvió SOLO PROD TP6 y el de QA no. Las pruebas manuales de escritura desde la interfaz siguen pendientes. Codex asistió con el job y la documentación; la corrida del PR y la primera promoción real se verificarán después de los commits y pushes manuales.
-
-
-### Gate humano de producción
-
-La primera promoción automática a QA terminó verde en la corrida https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39680368274 del commit cd1530b. Se comprobó en Deploys de ambos servicios de QA que el disparador fue Deploy Hook y que el commit cd1530b quedó Live. El backend mostró 24,7 segundos y el frontend 23,7 segundos de duración de despliegue; estos tiempos corresponden a QA, no a la prueba de rollback pendiente de producción.
-
-El environment production exige a Vargass21 como reviewer, permite self-review para trabajar individualmente y no permite bypass de administradores. Se verificaron las reglas guardadas mediante la API de GitHub y la existencia de los secrets RENDER_HOOK_API_PROD y RENDER_HOOK_FRONT_PROD dentro del environment. Sus valores deben corresponder a los servicios de producción y se comprobarán en Render sin publicarlos.
-
-El job deploy-prod depende de deploy-qa: solo continúa después de su éxito y, en PRs, queda salteado porque QA también se saltea. environment: production hace que GitHub espere la aprobación antes de ejecutar los pasos y permitir el acceso a los secrets de ese entorno. Se implementa Continuous Delivery: la entrega está automatizada, pero la decisión de llegar a producción es humana. Continuous Deployment quitaría esa aprobación; no es lo implementado.
-
-Antes de aprobar reviso la corrida y su commit, los checks de ambas aplicaciones, el resultado y los reintentos del smoke de QA, el estado Live y commit de ambos servicios de QA, el alcance del cambio, la separación de las bases y la disponibilidad de una versión anterior para recuperar el servicio. También reviso que no haya una corrida más nueva ya desplegada. La aprobación agrega una decisión informada de oportunidad y riesgo; no reemplaza tests ni monitoreo. Con el smoke actual no se verifica automáticamente la versión ejecutada ni todas las reglas de negocio.
-
-La concurrencia deploy-prod con cancel-in-progress: false evita que se ejecuten simultáneamente jobs de despliegue de producción dentro del grupo. No se utiliza como garantía de orden de las aprobaciones ni de finalización del build remoto: los hooks son asíncronos. Si hay una aprobación obsoleta, debo rechazarla antes de aprobar una más nueva. Ambos hooks reciben el SHA del commit aprobado, aunque main haya avanzado durante la espera.
-
-El smoke de PROD prueba las mismas cuatro rutas que QA, con reintentos y límites por petición. Conserva la limitación de poder responder contra la versión anterior: también se comprobarán commit y estado Live en Render. Se requieren dos corridas: la primera será rechazada con un motivo propio basado en lo observado; una segunda, con un cambio visible en el frontend, permitirá comprobar la aprobación y llegada del cambio. Ambas evidencias siguen pendientes y no se declaran realizadas.
-
-Codex asistió con el job de producción y estas explicaciones; los commits, pushes y decisiones de aprobación o rechazo los realizo personalmente.
-
-
-### Rechazo y comprobación funcional de QA
-
-La corrida https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39682036907 del commit 5232df9 dejó PROD esperando revisión después de QA verde. Rechacé la promoción porque faltaba probar la creación de una reserva desde la interfaz de QA; el motivo quedó escrito en Review deployments. La corrida terminó fallida por la decisión humana y no ejecutó el despliegue de producción.
-
-Después creé desde la interfaz de QA la reserva de Vargas, Sala A, para el 22 de octubre de 2026 de 18:00 a 20:00, con dos personas. La consulta posterior a la API de QA confirmó la reserva persistida como PENDIENTE; la API de PROD devolvió una lista vacía. Esto resolvió la comprobación funcional pendiente y volvió a confirmar la separación de datos.
-
-También se observó el límite del smoke: el job de QA de esa corrida duró tres segundos, mientras Render mostró despliegues de 23,8 segundos en frontend y 23,9 segundos en backend. El smoke no esperó la finalización de las nuevas construcciones. Se verificó después en ambos servicios que el commit 5232df9 estaba Live.
-
-Para la siguiente corrida se agregó debajo del título el texto visible: Organizá tus reuniones: consultá salas y reservá tu horario. Este cambio permitirá comprobar en QA y, tras aprobar, en PROD que la interfaz nueva llegó. La aprobación y la llegada efectiva a PROD siguen pendientes. Codex asistió en el cambio y la documentación; no realizó la aprobación, el rechazo, commits ni pushes.
+Falta integrar esta documentación, desplegar su commit en PROD y crear el tag y Release v6.0.0 con notas. El número lo fija el TP6 y debe apuntar a lo efectivamente desplegado.
