@@ -153,3 +153,14 @@ La concurrencia deploy-prod con cancel-in-progress: false evita que se ejecuten 
 El smoke de PROD prueba las mismas cuatro rutas que QA, con reintentos y límites por petición. Conserva la limitación de poder responder contra la versión anterior: también se comprobarán commit y estado Live en Render. Se requieren dos corridas: la primera será rechazada con un motivo propio basado en lo observado; una segunda, con un cambio visible en el frontend, permitirá comprobar la aprobación y llegada del cambio. Ambas evidencias siguen pendientes y no se declaran realizadas.
 
 Codex asistió con el job de producción y estas explicaciones; los commits, pushes y decisiones de aprobación o rechazo los realizo personalmente.
+
+
+### Rechazo y comprobación funcional de QA
+
+La corrida https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39682036907 del commit 5232df9 dejó PROD esperando revisión después de QA verde. Rechacé la promoción porque faltaba probar la creación de una reserva desde la interfaz de QA; el motivo quedó escrito en Review deployments. La corrida terminó fallida por la decisión humana y no ejecutó el despliegue de producción.
+
+Después creé desde la interfaz de QA la reserva de Vargas, Sala A, para el 22 de octubre de 2026 de 18:00 a 20:00, con dos personas. La consulta posterior a la API de QA confirmó la reserva persistida como PENDIENTE; la API de PROD devolvió una lista vacía. Esto resolvió la comprobación funcional pendiente y volvió a confirmar la separación de datos.
+
+También se observó el límite del smoke: el job de QA de esa corrida duró tres segundos, mientras Render mostró despliegues de 23,8 segundos en frontend y 23,9 segundos en backend. El smoke no esperó la finalización de las nuevas construcciones. Se verificó después en ambos servicios que el commit 5232df9 estaba Live.
+
+Para la siguiente corrida se agregó debajo del título el texto visible: Organizá tus reuniones: consultá salas y reservá tu horario. Este cambio permitirá comprobar en QA y, tras aprobar, en PROD que la interfaz nueva llegó. La aprobación y la llegada efectiva a PROD siguen pendientes. Codex asistió en el cambio y la documentación; no realizó la aprobación, el rechazo, commits ni pushes.
