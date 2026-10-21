@@ -1,8 +1,8 @@
 ## Enlaces de este TP
 
 - **TP6 — PR con tests verdes y login al registry salteado:** [job backend del PR #28](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425669436). El [job frontend](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425668804) muestra el mismo comportamiento.
-- **TP6 — Corrida de main que publica al final:** pendiente del merge y de su verificación.
-- **TP6 — Paquetes públicos etiquetados por commit:** pendientes de publicación y prueba de descarga anónima.
+- **TP6 — Corrida de main que publica al final:** [job backend de main, intento exitoso](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39659895341/job/119434626083). La publicación es el último paso propio, después de tests y reportes.
+- **TP6 — Paquetes públicos etiquetados por commit:** [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend), ambos con etiqueta `sha-7c3351128749130ad1973d2dc6d681031d8a698e`. Se consultaron sus manifiestos sin credenciales personales y se comprobó manualmente la descarga con docker pull después de docker logout ghcr.io.
 - **TP6 — URLs de QA y PROD:** pendientes de configuración y despliegue.
 
 # Decisiones técnicas
@@ -101,3 +101,14 @@ Los permisos contents: read y packages: write se declaran en cada job que public
 ### Uso de IA y verificación hasta este punto
 
 Usé Codex para interpretar la consigna, revisar el pipeline existente y preparar los cambios de publicación y esta explicación. Se revisó el diff y se comprobó que los pasos finales quedan después de los tests y reportes. Quedan pendientes la corrida del PR, la corrida de main y la descarga anónima de ambos paquetes. Los commits y pushes los realizo personalmente.
+
+
+### Bases de datos y conexión con Neon
+
+Creé app_qa y app_prod en el mismo proyecto y rama de Neon, usando PostgreSQL 16 como en Compose. Ejecuté el script existente app/backend/migrations/001_init.sql desde SQL Editor, una vez en cada base. El script crea rooms y reservations y agrega tres salas iniciales. Comprobé current_database() y los conteos: tres salas y cero reservas en cada base. Crear el esquema manualmente es suficiente para este TP; futuras modificaciones requerirán gestionar migraciones. Las bases comparten el rol propietario: los datos están separados, pero las credenciales no limitan el acceso a una sola base.
+
+El backend acepta DATABASE_URL para recibir la conexión completa del entorno de Render. Si existe, tiene prioridad sobre las variables DB_*; si no existe, conserva la configuración local anterior. node-postgres recibe la URI con sus parámetros TLS, sin agregar una configuración SSL contradictoria ni incluir contraseñas en el código. La conexión real desde Render queda pendiente de comprobar.
+
+La primera publicación desde main falló con permission_denied: read_package porque los paquetes existentes no tenían habilitado el acceso del repositorio desde Actions. Se otorgó Write a ingsoft3-tp01 en Manage Actions access de ambos paquetes y se reejecutaron los jobs del mismo commit: finalizaron verdes. Los paquetes quedaron públicos y se comprobó su descarga sin credenciales.
+
+Codex asistió en la adaptación de la configuración para Neon y en la documentación. Las credenciales se guardan fuera del repositorio. Los commits y pushes continúan siendo manuales.
