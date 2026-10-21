@@ -78,3 +78,19 @@ En el reporte de main identifiqué sin cubrir la línea 28 de reservationService
 Después de integrar el primer PR, git pull --ff-only falló porque mi main local y origin/main tenían historiales diferentes. Para continuar sin descartar commits, creé la rama de la segunda demostración directamente desde origin/main, que ya contenía el PR integrado.
 
 Usé ChatGPT y Codex para interpretar la consigna, preparar pruebas y revisar código, configuraciones y documentación. Comprobé los resultados con tests, reportes, builds Docker y Actions. Los commits y pushes los hice personalmente.
+
+## TP6 — Entrega continua (en desarrollo)
+
+### Publicación de imágenes verificadas
+
+El backend y el frontend tienen Dockerfiles propios, por lo que el pipeline publica dos imágenes en GHCR: `ghcr.io/vargass21/ingsoft3-tp01-backend` y `ghcr.io/vargass21/ingsoft3-tp01-frontend`. Cada imagen lleva la etiqueta `sha-<commit>` para identificar el código que la produjo. La publicación y el acceso público de los paquetes todavía deben comprobarse en GitHub; esta configuración local no demuestra que ya estén publicados.
+
+En cada job, primero se ejecutan los tests y el control de cobertura del TP5, después se generan los reportes y finalmente se construye la imagen de ejecución. Ese último paso publica solamente cuando el evento es un push a main. En un PR se verifica y construye, pero no se inicia sesión en GHCR ni se publica. Los pasos de publicación mantienen la condición de éxito predeterminada: no usan always(), !cancelled() ni continue-on-error para saltarse una falla previa.
+
+La confianza en lo publicado depende de tres controles: la protección de main exige los checks verdes, solo main publica y la publicación queda al final del mismo job que verifica. La protección de rama debe mantenerse activa. Si se publicara aun con verificaciones fallidas, encontrar una imagen en el registry dejaría de indicar que superó los controles del pipeline. Esta cadena no impide una publicación manual por alguien con permisos, y cada job garantiza sus propias verificaciones: si falla frontend, backend puede haber publicado su imagen, aunque la promoción de la aplicación deberá exigir ambos jobs verdes.
+
+Los permisos contents: read y packages: write se declaran en cada job que publica. El primero permite leer el repositorio; el segundo, publicar paquetes mediante GITHUB_TOKEN, sin guardar una credencial adicional. Los nombres de las imágenes se escriben en minúsculas porque el usuario de GitHub contiene una mayúscula. Una etiqueta por commit aporta trazabilidad, pero puede reemplazarse; un digest identifica el contenido de la imagen.
+
+### Uso de IA y verificación hasta este punto
+
+Usé Codex para interpretar la consigna, revisar el pipeline existente y preparar los cambios de publicación y esta explicación. Se revisó el diff y se comprobó que los pasos finales quedan después de los tests y reportes. Quedan pendientes la corrida del PR, la corrida de main y la descarga anónima de ambos paquetes. Los commits y pushes los realizo personalmente.
