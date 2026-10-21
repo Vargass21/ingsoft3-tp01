@@ -136,3 +136,20 @@ Después de solicitar ambos despliegues, el smoke prueba /api/health (incluye SE
 Limitación: el hook acepta la solicitud antes de terminar la construcción de Render; mientras tanto puede responder la versión anterior, incluso si la construcción nueva falla. El smoke comprueba disponibilidad y conectividad, no la identidad del commit que corre. En la primera promoción se deben abrir Deploys de ambos servicios de QA y comprobar commit y estado Live. Render reconstruye desde el repositorio: coincide el commit solicitado, pero no se garantiza identidad con la imagen de GHCR. La verificación automática de versión y el despliegue del artefacto publicado quedan como evolución del TP7.
 
 Los cuatro servicios iniciales ya respondieron por HTTP; el frontend de PROD devolvió SOLO PROD TP6 y el de QA no. Las pruebas manuales de escritura desde la interfaz siguen pendientes. Codex asistió con el job y la documentación; la corrida del PR y la primera promoción real se verificarán después de los commits y pushes manuales.
+
+
+### Gate humano de producción
+
+La primera promoción automática a QA terminó verde en la corrida https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39680368274 del commit cd1530b. Se comprobó en Deploys de ambos servicios de QA que el disparador fue Deploy Hook y que el commit cd1530b quedó Live. El backend mostró 24,7 segundos y el frontend 23,7 segundos de duración de despliegue; estos tiempos corresponden a QA, no a la prueba de rollback pendiente de producción.
+
+El environment production exige a Vargass21 como reviewer, permite self-review para trabajar individualmente y no permite bypass de administradores. Se verificaron las reglas guardadas mediante la API de GitHub y la existencia de los secrets RENDER_HOOK_API_PROD y RENDER_HOOK_FRONT_PROD dentro del environment. Sus valores deben corresponder a los servicios de producción y se comprobarán en Render sin publicarlos.
+
+El job deploy-prod depende de deploy-qa: solo continúa después de su éxito y, en PRs, queda salteado porque QA también se saltea. environment: production hace que GitHub espere la aprobación antes de ejecutar los pasos y permitir el acceso a los secrets de ese entorno. Se implementa Continuous Delivery: la entrega está automatizada, pero la decisión de llegar a producción es humana. Continuous Deployment quitaría esa aprobación; no es lo implementado.
+
+Antes de aprobar reviso la corrida y su commit, los checks de ambas aplicaciones, el resultado y los reintentos del smoke de QA, el estado Live y commit de ambos servicios de QA, el alcance del cambio, la separación de las bases y la disponibilidad de una versión anterior para recuperar el servicio. También reviso que no haya una corrida más nueva ya desplegada. La aprobación agrega una decisión informada de oportunidad y riesgo; no reemplaza tests ni monitoreo. Con el smoke actual no se verifica automáticamente la versión ejecutada ni todas las reglas de negocio.
+
+La concurrencia deploy-prod con cancel-in-progress: false evita que se ejecuten simultáneamente jobs de despliegue de producción dentro del grupo. No se utiliza como garantía de orden de las aprobaciones ni de finalización del build remoto: los hooks son asíncronos. Si hay una aprobación obsoleta, debo rechazarla antes de aprobar una más nueva. Ambos hooks reciben el SHA del commit aprobado, aunque main haya avanzado durante la espera.
+
+El smoke de PROD prueba las mismas cuatro rutas que QA, con reintentos y límites por petición. Conserva la limitación de poder responder contra la versión anterior: también se comprobarán commit y estado Live en Render. Se requieren dos corridas: la primera será rechazada con un motivo propio basado en lo observado; una segunda, con un cambio visible en el frontend, permitirá comprobar la aprobación y llegada del cambio. Ambas evidencias siguen pendientes y no se declaran realizadas.
+
+Codex asistió con el job de producción y estas explicaciones; los commits, pushes y decisiones de aprobación o rechazo los realizo personalmente.
