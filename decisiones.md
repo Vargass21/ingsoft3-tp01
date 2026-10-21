@@ -1,3 +1,10 @@
+## Enlaces de este TP
+
+- **TP6 — PR con tests verdes y login al registry salteado:** [job backend del PR #28](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425669436). El [job frontend](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425668804) muestra el mismo comportamiento.
+- **TP6 — Corrida de main que publica al final:** pendiente del merge y de su verificación.
+- **TP6 — Paquetes públicos etiquetados por commit:** pendientes de publicación y prueba de descarga anónima.
+- **TP6 — URLs de QA y PROD:** pendientes de configuración y despliegue.
+
 # Decisiones técnicas
 
 - **React con Vite:** permite una interfaz por componentes, rápida de ejecutar y con pocos archivos de configuración.
