@@ -112,3 +112,14 @@ El backend acepta DATABASE_URL para recibir la conexión completa del entorno de
 La primera publicación desde main falló con permission_denied: read_package porque los paquetes existentes no tenían habilitado el acceso del repositorio desde Actions. Se otorgó Write a ingsoft3-tp01 en Manage Actions access de ambos paquetes y se reejecutaron los jobs del mismo commit: finalizaron verdes. Los paquetes quedaron públicos y se comprobó su descarga sin credenciales.
 
 Codex asistió en la adaptación de la configuración para Neon y en la documentación. Las credenciales se guardan fuera del repositorio. Los commits y pushes continúan siendo manuales.
+
+
+### Configuración del frontend al arrancar e independencia de datos
+
+Los backends de QA y PROD se crearon como Web Services Docker en Render, con el plan Free, raíz app/backend, puerto 3000, health check /api/health y Auto-Deploy desactivado. Cada servicio recibe su DATABASE_URL de Neon. Estas construcciones iniciales preparan los servicios; todavía no constituyen la evidencia de promoción disparada por Actions.
+
+Se comprobó HTTP 200 en /api/health y /api/rooms de ambos servicios. Para verificar el aislamiento, se insertó la sala SOLO PROD TP6 directamente en app_prod mediante SQL Editor. La API de producción la devolvió y la de QA no: esto comprueba que no están utilizando la misma base. URLs de API: https://minireservas-api-qa.onrender.com y https://minireservas-api-prod.onrender.com. Los frontends y la automatización de despliegue siguen pendientes.
+
+El frontend conserva /api como ruta relativa en su build Docker. La dirección concreta del backend deja de estar fijada en nginx.conf: default.conf.template se procesa al arrancar el contenedor con BACKEND_URL y DNS_RESOLVER. Por defecto utiliza http://backend:3000 y el DNS de Docker para mantener Compose. En Render se configurará la URL HTTPS de la API del entorno y un resolver público. proxy_ssl_server_name habilita SNI para la conexión HTTPS al backend. La imagen contiene los archivos del frontend y la plantilla; la dirección del backend y el resolver se pueden reemplazar sin reconstruirla. BACKEND_URL debe contener solo el origen, sin barra final ni /api.
+
+Codex asistió con esta adaptación y su documentación. Se construyó minireservas-front-tp6:local una sola vez y se ejecutó con valores por defecto y con las URLs de QA y PROD. Se inspeccionaron las configuraciones generadas y nginx -t fue exitoso. Dos contenedores con el mismo identificador de imagen sirvieron /api/rooms a través de nginx: QA devolvió tres salas y PROD cuatro, incluyendo SOLO PROD TP6. La raíz del frontend también respondió. Se eliminaron los contenedores de prueba; falta desplegar los frontends en Render.
