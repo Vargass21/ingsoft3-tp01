@@ -3,7 +3,7 @@
 - **TP6 — PR con tests verdes y login al registry salteado:** [job backend del PR #28](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425669436). El [job frontend](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39658685810/job/119425668804) muestra el mismo comportamiento.
 - **TP6 — Corrida de main que publica al final:** [job backend de main, intento exitoso](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/39659895341/job/119434626083). La publicación es el último paso propio, después de tests y reportes.
 - **TP6 — Paquetes públicos etiquetados por commit:** [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend), ambos con etiqueta `sha-7c3351128749130ad1973d2dc6d681031d8a698e`. Se consultaron sus manifiestos sin credenciales personales y se comprobó manualmente la descarga con docker pull después de docker logout ghcr.io.
-- **TP6 — URLs de QA y PROD:** pendientes de configuración y despliegue.
+- **TP6 — URLs de QA y PROD:** [frontend QA](https://minireservas-front-qa.onrender.com) y [frontend PROD](https://minireservas-front-prod.onrender.com). APIs: [QA](https://minireservas-api-qa.onrender.com/api/health) y [PROD](https://minireservas-api-prod.onrender.com/api/health). Servicios inicializados en Render; promoción desde Actions todavía en implementación.
 
 # Decisiones técnicas
 
@@ -123,3 +123,16 @@ Se comprobó HTTP 200 en /api/health y /api/rooms de ambos servicios. Para verif
 El frontend conserva /api como ruta relativa en su build Docker. La dirección concreta del backend deja de estar fijada en nginx.conf: default.conf.template se procesa al arrancar el contenedor con BACKEND_URL y DNS_RESOLVER. Por defecto utiliza http://backend:3000 y el DNS de Docker para mantener Compose. En Render se configurará la URL HTTPS de la API del entorno y un resolver público. proxy_ssl_server_name habilita SNI para la conexión HTTPS al backend. La imagen contiene los archivos del frontend y la plantilla; la dirección del backend y el resolver se pueden reemplazar sin reconstruirla. BACKEND_URL debe contener solo el origen, sin barra final ni /api.
 
 Codex asistió con esta adaptación y su documentación. Se construyó minireservas-front-tp6:local una sola vez y se ejecutó con valores por defecto y con las URLs de QA y PROD. Se inspeccionaron las configuraciones generadas y nginx -t fue exitoso. Dos contenedores con el mismo identificador de imagen sirvieron /api/rooms a través de nginx: QA devolvió tres salas y PROD cuatro, incluyendo SOLO PROD TP6. La raíz del frontend también respondió. Se eliminaron los contenedores de prueba; falta desplegar los frontends en Render.
+
+
+### Promoción automática a QA
+
+El job deploy-qa depende de build-backend y build-frontend mediante needs: si falla cualquiera, no despliega. Su if exige push a main, por lo que los PRs verifican sin desplegar. environment: qa conecta el job a los dos environment secrets RENDER_HOOK_API_QA y RENDER_HOOK_FRONT_QA y al historial de deployments. QA no tiene required reviewers. Se comprobó que ambos nombres existen en ese environment; GitHub no permite recuperar sus valores.
+
+Los hooks reciben &ref=$GITHUB_SHA para solicitar el commit de esta corrida en vez de la punta cambiante de main. Las respuestas del hook se descartan para evitar imprimir información innecesaria. Antes de llamar al proveedor se comprueba que ambos secrets tengan valor. Auto-Deploy permanece Off en los cuatro servicios según su configuración de creación, para que los próximos despliegues dependan del pipeline.
+
+Después de solicitar ambos despliegues, el smoke prueba /api/health (incluye SELECT 1), /api/rooms (requiere el esquema), la raíz del frontend y /api/rooms a través de nginx. Reintenta hasta 30 veces, espera 20 segundos entre intentos y limita cada petición a 10 segundos. El tiempo total no es exactamente diez minutos: también incluye lo que tarde cada petición. Agotados los intentos, termina con exit 1 y falla el job. Los reintentos toleran arranques lentos y servicios dormidos.
+
+Limitación: el hook acepta la solicitud antes de terminar la construcción de Render; mientras tanto puede responder la versión anterior, incluso si la construcción nueva falla. El smoke comprueba disponibilidad y conectividad, no la identidad del commit que corre. En la primera promoción se deben abrir Deploys de ambos servicios de QA y comprobar commit y estado Live. Render reconstruye desde el repositorio: coincide el commit solicitado, pero no se garantiza identidad con la imagen de GHCR. La verificación automática de versión y el despliegue del artefacto publicado quedan como evolución del TP7.
+
+Los cuatro servicios iniciales ya respondieron por HTTP; el frontend de PROD devolvió SOLO PROD TP6 y el de QA no. Las pruebas manuales de escritura desde la interfaz siguen pendientes. Codex asistió con el job y la documentación; la corrida del PR y la primera promoción real se verificarán después de los commits y pushes manuales.
