@@ -1,12 +1,10 @@
 ## Enlaces del TP7
 
-- Rotura del front: [commit 52f26606be25bb8e258473116a5470522b417085](https://github.com/Vargass21/ingsoft3-tp01/commit/52f26606be25bb8e258473116a5470522b417085), [corrida roja](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385), [reporte integracion verde](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569431490) y [reporte e2e rojo](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569991659).
-- Primera cadena con ambas suites verdes y promocion aprobada: [corrida 40112818719](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40112818719), commit `8bfb1833b7f42ee4dae451d3e390f71fcdbcf5f2`.
-
-- Cadena de imagenes QA → aprobacion → PROD: [corrida del PR #35 integrado](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40033629059), commit `4de25af6974c84eb09ba97f92652c5eff3fb7d33`.
-- Paquetes publicos: [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend), etiqueta `sha-4de25af6974c84eb09ba97f92652c5eff3fb7d33` en ambos.
-- Entornos: [frontend QA](https://minireservas-front-qa.onrender.com), [API QA](https://minireservas-api-qa.onrender.com/api/health), [frontend PROD](https://minireservas-front-prod.onrender.com), [API PROD](https://minireservas-api-prod.onrender.com/api/health).
-- Pendientes para cerrar TP7: corrida completa posterior a la correccion, verificaciones de las imagenes en PROD y release `v7.0.0`.
+- **Imágenes públicas:** [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend). Ambas tienen la etiqueta `sha-7c449be95a116d30080a792eb851e9449923d3fc` de la corrección desplegada.
+- **Demostración del bloqueo:** [commit que rompió el frontend](https://github.com/Vargass21/ingsoft3-tp01/commit/52f26606be25bb8e258473116a5470522b417085), [corrida roja](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385), [reporte de integración verde](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569431490) y [reporte e2e rojo](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569991659).
+- **Corrección y promoción a PROD:** [corrida completa verde](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40118029340), commit `7c449be95a116d30080a792eb851e9449923d3fc`.
+- **QA:** [aplicación](https://minireservas-front-qa.onrender.com) y [API](https://minireservas-api-qa.onrender.com/api/health). **PROD:** [aplicación](https://minireservas-front-prod.onrender.com) y [API](https://minireservas-api-prod.onrender.com/api/health). Deben seguir disponibles hasta la defensa.
+- **Release:** pendiente crear `v7.0.0` después de integrar y desplegar este cierre documental.
 
 ## Enlaces de este TP
 
@@ -142,43 +140,40 @@ Usé ChatGPT y Codex para entender la consigna, preparar configuración y workfl
 
 El TP6 quedo cerrado: esta documentacion se integro mediante el PR #34, la corrida 39686145820 llego a PROD y el tag y la release v6.0.0 apuntan al commit 64e8e8b20d72de273cfc32358fb1e93c3600d3d2.
 
-## TP7 — Contenedores, integracion y e2e (en desarrollo)
+## TP7 — Contenedores, integración y e2e
 
-### Imagenes y configuracion
+### Imágenes y despliegue
 
-El proveedor ya no reconstruye el codigo del commit como en TP6: el pipeline envia imgURL con las imagenes publicadas en GHCR. Una dependencia resuelta de nuevo podia hacer distintos los builds de QA y PROD; ahora ambos reciben el mismo par de imagenes. Los cuatro servicios existentes cambiaron su fuente a Existing Image, conservando sus URLs y variables. No se crearon servicios adicionales.
+En TP6 Render reconstruía la app para cada entorno. Aunque fuera el mismo código, una dependencia podía cambiar entre builds. Ahora el pipeline construye y publica las imágenes una vez y usa `imgURL` para indicar cuáles ejecutar en QA y PROD. Eso es build once, deploy many.
 
-Las etiquetas sha-<commit completo> permiten relacionar ambas imagenes con el codigo que las produjo. No publico latest. Una etiqueta puede sobrescribirse: volver a construir una corrida vieja podria cambiar su contenido; el digest sha256 identifica el contenido exacto. Este TP promueve por etiqueta, como permite la consigna. La futura release v7.0.0 debe nombrar el commit efectivamente desplegado en PROD; git rev-list -n1 v7.0.0 permite obtener el commit y formar la etiqueta de sus imagenes.
+Cambié la fuente de los cuatro servicios existentes a Existing Image. Conservé sus URLs, variables e historial. Configuré como punto de partida las imágenes `sha-64e8e8b20d72de273cfc32358fb1e93c3600d3d2`; después cada corrida indica su propia etiqueta mediante el hook. Por eso la imagen configurada inicialmente puede ser distinta de la que está corriendo. En Events compruebo que el despliegue diga Triggered via Deploy Hook, nombre la etiqueta de la corrida y quede Live. El smoke solo comprueba que responde: podría responder la versión anterior si el deploy falló.
 
-La imagen inicial configurada en Render es sha-64e8e8b20d72de273cfc32358fb1e93c3600d3d2. Cada hook indica despues la etiqueta de su corrida sin actualizar esa configuracion inicial. En Events de los cuatro servicios se verifico Triggered via Deploy Hook y Live para sha-4de25af6974c84eb09ba97f92652c5eff3fb7d33. El smoke puede responder con la version anterior mientras se despliega: no identifica la imagen. Comparar automaticamente un commit incorporado a la imagen queda como concepto, sin implementarlo en este TP.
+Uso `sha-<commit completo>` para relacionar las imágenes con su código. No publico `latest` porque cambia de destino y no identifica una versión concreta. También se puede sobrescribir una etiqueta `sha-`; el digest es el que identifica el contenido exacto. `v7.0.0` será el nombre de la entrega en Git y debe apuntar al commit activo en PROD, no necesariamente al último de main. Con `git rev-list -n1 v7.0.0` obtengo el commit y de ahí la etiqueta de ambas imágenes.
 
-La misma imagen de frontend usa /api; nginx recibe BACKEND_URL y DNS_RESOLVER al iniciar. Cada API conserva DATABASE_URL de su entorno. Los destinos y los secretos no se incorporan a la imagen.
+El frontend usa `/api` y nginx recibe `BACKEND_URL` y `DNS_RESOLVER` al arrancar. Cada backend tiene su `DATABASE_URL`. Así la misma imagen sirve en QA y PROD cambiando la configuración del entorno.
 
-### Casos y verificacion local
+### Pruebas elegidas
 
-Adapte los ejemplos de tareas a salas, que forman el catalogo necesario para reservar. La integracion usa request de Playwright: alta, consulta y borrado; nombre vacio rechazado con 400 sin alta; y conservacion del nombre, capacidad y estado en consultas posteriores. La tercera protege los datos que determinan que salas se pueden reservar y para cuantas personas. Usa la API con PostgreSQL real, sin dobles ni navegador. Al incorporarla a CI sera integracion amplia contra la API publica de QA: incluye el despliegue y evita preparar otra base en el job, pero depende de la red, la disponibilidad y el estado compartido del entorno.
+Elegí salas porque son el catálogo necesario para reservar. En integración pruebo alta, consulta y borrado; nombre vacío rechazado con 400 sin crear nada; y conservación del nombre, capacidad y estado al consultar nuevamente. En e2e pruebo creación y borrado desde la pantalla, error por nombre vacío y persistencia de la sala y su capacidad al recargar. La tercera de cada suite protege los datos que el usuario necesita para elegir una sala disponible y con capacidad suficiente. Agregué el botón de borrado usando el endpoint que ya existía.
 
-Las e2e crean una sala y la borran; envian nombre vacio y comprueban el error sin nueva fila; y crean una sala, recargan y verifican que conserve su capacidad antes de borrarla. Agregue un boton accesible de borrado que utiliza el endpoint existente. Cada alta usa hora y UUID, y se limpia en finally. Se verifica la ausencia despues de borrar y de recargar. No se modifican salas preexistentes. Los casos invalidos comparan el estado anterior y posterior, por lo que requieren no ejecutar escrituras ajenas a la vez.
+Integración usa `request` de Playwright contra la API pública de QA y PostgreSQL real, sin navegador ni dobles. Es integración amplia: aprovecha QA y comprueba también el sistema desplegado, pero depende de la red y de un entorno compartido. La estrecha levantaría una API y una base descartables para cada corrida; aislaría mejor los datos, con más configuración.
 
-No repito todas las combinaciones de horarios, capacidad o transiciones de reservas en estas suites: las reglas aisladas ya tienen unitarios. Estos seis casos tampoco demuestran que todo el flujo de reservas este sano; esa es una limitacion de la cobertura elegida. Una integracion verde con e2e roja orienta a la interfaz o su conexion con la API para los casos cubiertos; una integracion roja deja las e2e sin ejecutar cuando se configure needs.
+Las e2e usan un navegador contra el frontend de QA. No repito todas las combinaciones de horarios o transiciones de reservas en ninguna de estas suites: esas reglas ya tienen unitarios. Estos casos tampoco cubren todo el proceso de reservas. Cada alta usa hora y UUID para evitar choques; después borro lo creado y compruebo su ausencia.
 
-Playwright tiene timeout de 60 s por test, 15 s por asercion y un retry. No uso sleeps ni mocks de red. En CI el smoke previo despertara QA. Un flaky pasa y falla sin un cambio relevante: un retry no lo resuelve. En la primera prueba local un selector buscaba el texto 7 y confundia ID con capacidad; lo corregi seleccionando la columna Capacidad dentro de la fila de nombre unico. Luego las tres e2e pasaron sin retries. Tambien pasaron las tres integraciones, los 30 unitarios del frontend (65,44 % de lineas, sobre el minimo 60 %) y el build. Se inspeccionaron las trazas: POST 201, GET 200 y DELETE 204 en los flujos validos; POST 400 en el invalido. Los reportes y trazas generados se excluyen de Git y del contexto Docker.
+### Bloqueo de producción y problemas encontrados
 
-QA es compartido: otro merge puede cambiar la imagen mientras una suite corre. Se debe trabajar con un merge por vez hasta que terminen ambas suites. Una corrida solapada no vale como evidencia de su imagen: se rechaza su promocion con motivo y se usa la posterior. No se reejecutan sus tests contra un QA que ya cambio. concurrency de PROD no protege esa ventana; entornos por corrida quedan fuera del TP.
+La cadena quedó `deploy-qa → integracion → e2e → aprobación → deploy-prod`. Si integración falla, e2e no corre. Si e2e falla, PROD no pide aprobación. Cada suite publica su reporte incluso cuando falla.
 
-### Uso de IA y pendientes
+Para demostrarlo cambié solo el formulario: enviaba `title` en vez de `name`. Los unitarios y el smoke pasaron. Integración tuvo 3 passed; e2e, 2 failed y 1 passed; PROD quedó salteado. Revisé ambos reportes: la traza mostraba el POST con `title` y la respuesta 400. La API funcionaba con el dato correcto, pero el frontend lo enviaba mal. Restauré `name` sin modificar los tests. La siguiente corrida tuvo 3 passed en cada suite y llegó a PROD después de mi aprobación.
 
-Use Codex para interpretar la consigna, adaptar los casos, preparar la configuracion, el boton de borrado y esta documentacion. Se verifico con unitarios, build, PostgreSQL en Compose, las seis pruebas locales y las trazas HTTP reales. Los commits, pushes y las operaciones en GitHub y Render los realizo personalmente. El PR #26 permanece abierto sin modificaciones.
+En una prueba local, el selector confundió el ID 7 con la capacidad 7. Pasó al reintentar: era un flaky, un test que pasa y falla sin cambiar el comportamiento probado. Lo corregí buscando la columna de capacidad dentro de la fila correspondiente y repetí las pruebas sin reintentos. Para el arranque lento uso el smoke previo, 60 segundos por test, 15 por aserción y un retry, sin sleeps fijos. Reintentar no reemplaza investigar un flaky.
 
-Las suites ya estan configuradas en el mismo workflow: integracion necesita deploy-qa, e2e necesita integracion y deploy-prod necesita e2e. Cada suite publica su propio reporte incluso si falla; solo esos pasos usan !cancelled(), sin ignorar fallos de tests ni forzar el deploy. Los reportes se retienen 30 dias y se deben conservar vigentes hasta la defensa. Falta ejecutar esta configuracion en Actions contra QA desplegado, demostrar la rotura real del front y su correccion, publicar ambos reportes y cerrar con v7.0.0 sobre el commit de PROD. Las verificaciones locales son preparacion y no reemplazan esa evidencia.
+GitHub también demoró una corrida y devolvió 502/504 al consultar sus logs. Esperé a que terminara y después descargué los reportes. Ese problema fue distinto del error del formulario.
 
+QA es compartido: otro merge puede cambiar la imagen mientras corren las pruebas. Por eso hago un merge por vez hasta que terminen ambas suites. Si se solapan, rechazo la promoción anterior con motivo y uso la posterior; no repito los tests viejos contra otra imagen. La concurrencia de PROD no evita ese problema. Los reportes se guardan 30 días; debo conservarlos disponibles hasta la defensa.
 
-### Demostracion del gate y diagnostico de los reportes
+### Uso de IA y cierre
 
-El PR #37 cambio solo RoomsPage.jsx: el formulario envio title en lugar de name. No se editaron specs ni el workflow. La corrida 40115531385 termino con builds y deploy-qa verdes, integracion con 3 passed, e2e con 2 failed y 1 passed, y deploy-prod skipped sin solicitar aprobacion. El smoke estaba verde aunque no se podia crear una sala desde la pantalla.
+Usé Codex para entender la consigna y ayudar con configuración, pruebas, botón de borrado y documentación. Lo verifiqué con los unitarios, el build, las seis pruebas locales con PostgreSQL, los reportes y las corridas reales en QA. Hice personalmente los commits, pushes y las operaciones en GitHub y Render. El PR #26 sigue abierto sin cambios.
 
-Se descargaron los dos reportes y se inspeccionaron las trazas del retry. Network muestra POST /api/rooms con {"title":"e2e ...","capacity":7,"active":true} y respuesta 400. Las e2e de alta y persistencia no encontraron su fila; la validacion de nombre vacio siguio pasando. El reporte verde de integracion confirma que la API aceptaba altas correctas y guardaba y borraba en su base real. Juntos orientan al contrato entre frontend y API: el navegador envio un campo incorrecto. No significa que toda la API carezca de bugs, sino que los casos directos cubiertos funcionaban.
-
-GitHub tuvo errores 502/504 al consultar esa corrida y no cargaba pasos ni logs durante parte de la espera. Se dejo terminar sin cancelarla ni reconstruir otra vez el mismo commit; luego se recuperaron los reportes. La demora no se utilizo como evidencia de un fallo de la aplicacion: la evidencia es la traza HTTP y la cadena final.
-
-La correccion restaura name en el formulario, sin modificar tests. Las seis pruebas pasaron localmente sin reintentos contra Compose. Todavia falta que su nueva corrida complete QA, ambas suites y la promocion aprobada a PROD para cerrar la secuencia rojo → fix → verde.
+Falta integrar y desplegar este cierre documental y crear el tag y la release `v7.0.0` sobre el commit que quede activo en PROD, comprobándolo en Deployments y Events.
