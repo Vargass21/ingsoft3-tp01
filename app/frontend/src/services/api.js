@@ -13,6 +13,7 @@ async function request(path, options) {
   }
 }
 export const api = {
+  deleteRoom: (id) => request(`/rooms/${id}`, { method: 'DELETE' }),
   rooms: () => request('/rooms'), createRoom: (data) => request('/rooms', { method: 'POST', body: JSON.stringify(data) }),
   reservations: () => request('/reservations'), createReservation: (data) => request('/reservations', { method: 'POST', body: JSON.stringify(data) }),
   status: (id, status) => request(`/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
