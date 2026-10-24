@@ -1,9 +1,12 @@
 ## Enlaces del TP7
 
+- Rotura del front: [commit 52f26606be25bb8e258473116a5470522b417085](https://github.com/Vargass21/ingsoft3-tp01/commit/52f26606be25bb8e258473116a5470522b417085), [corrida roja](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385), [reporte integracion verde](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569431490) y [reporte e2e rojo](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40115531385/artifacts/12569991659).
+- Primera cadena con ambas suites verdes y promocion aprobada: [corrida 40112818719](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40112818719), commit `8bfb1833b7f42ee4dae451d3e390f71fcdbcf5f2`.
+
 - Cadena de imagenes QA → aprobacion → PROD: [corrida del PR #35 integrado](https://github.com/Vargass21/ingsoft3-tp01/actions/runs/40033629059), commit `4de25af6974c84eb09ba97f92652c5eff3fb7d33`.
 - Paquetes publicos: [backend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-backend) y [frontend](https://github.com/users/Vargass21/packages/container/package/ingsoft3-tp01-frontend), etiqueta `sha-4de25af6974c84eb09ba97f92652c5eff3fb7d33` en ambos.
 - Entornos: [frontend QA](https://minireservas-front-qa.onrender.com), [API QA](https://minireservas-api-qa.onrender.com/api/health), [frontend PROD](https://minireservas-front-prod.onrender.com), [API PROD](https://minireservas-api-prod.onrender.com/api/health).
-- Pendientes para cerrar TP7: enlaces a la rotura real del front con integracion verde y e2e roja, sus dos reportes, la corrida posterior completa y la release `v7.0.0`. La corrida enlazada arriba verifica la etapa de imagenes; todavia no incluye las suites del TP7.
+- Pendientes para cerrar TP7: corrida completa posterior a la correccion, verificaciones de las imagenes en PROD y release `v7.0.0`.
 
 ## Enlaces de este TP
 
@@ -168,3 +171,14 @@ QA es compartido: otro merge puede cambiar la imagen mientras una suite corre. S
 Use Codex para interpretar la consigna, adaptar los casos, preparar la configuracion, el boton de borrado y esta documentacion. Se verifico con unitarios, build, PostgreSQL en Compose, las seis pruebas locales y las trazas HTTP reales. Los commits, pushes y las operaciones en GitHub y Render los realizo personalmente. El PR #26 permanece abierto sin modificaciones.
 
 Las suites ya estan configuradas en el mismo workflow: integracion necesita deploy-qa, e2e necesita integracion y deploy-prod necesita e2e. Cada suite publica su propio reporte incluso si falla; solo esos pasos usan !cancelled(), sin ignorar fallos de tests ni forzar el deploy. Los reportes se retienen 30 dias y se deben conservar vigentes hasta la defensa. Falta ejecutar esta configuracion en Actions contra QA desplegado, demostrar la rotura real del front y su correccion, publicar ambos reportes y cerrar con v7.0.0 sobre el commit de PROD. Las verificaciones locales son preparacion y no reemplazan esa evidencia.
+
+
+### Demostracion del gate y diagnostico de los reportes
+
+El PR #37 cambio solo RoomsPage.jsx: el formulario envio title en lugar de name. No se editaron specs ni el workflow. La corrida 40115531385 termino con builds y deploy-qa verdes, integracion con 3 passed, e2e con 2 failed y 1 passed, y deploy-prod skipped sin solicitar aprobacion. El smoke estaba verde aunque no se podia crear una sala desde la pantalla.
+
+Se descargaron los dos reportes y se inspeccionaron las trazas del retry. Network muestra POST /api/rooms con {"title":"e2e ...","capacity":7,"active":true} y respuesta 400. Las e2e de alta y persistencia no encontraron su fila; la validacion de nombre vacio siguio pasando. El reporte verde de integracion confirma que la API aceptaba altas correctas y guardaba y borraba en su base real. Juntos orientan al contrato entre frontend y API: el navegador envio un campo incorrecto. No significa que toda la API carezca de bugs, sino que los casos directos cubiertos funcionaban.
+
+GitHub tuvo errores 502/504 al consultar esa corrida y no cargaba pasos ni logs durante parte de la espera. Se dejo terminar sin cancelarla ni reconstruir otra vez el mismo commit; luego se recuperaron los reportes. La demora no se utilizo como evidencia de un fallo de la aplicacion: la evidencia es la traza HTTP y la cadena final.
+
+La correccion restaura name en el formulario, sin modificar tests. Las seis pruebas pasaron localmente sin reintentos contra Compose. Todavia falta que su nueva corrida complete QA, ambas suites y la promocion aprobada a PROD para cerrar la secuencia rojo → fix → verde.
