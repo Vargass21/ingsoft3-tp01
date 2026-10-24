@@ -14,6 +14,12 @@ export function RoomsPage() {
   };
   useEffect(load, []);
 
+  const remove = async id => {
+    setMessage('');
+    try { await api.deleteRoom(id); load(); }
+    catch (error) { setMessage(error.message); }
+  };
+
   const submit = async event => {
     event.preventDefault();
     setMessage('');
@@ -21,5 +27,5 @@ export function RoomsPage() {
     catch (error) { setMessage(error.message); }
   };
 
-  return <section><h2>Salas</h2><p>Creá y consultá las salas disponibles para reservar.</p>{message && <p role="alert">{message}</p>}<form onSubmit={submit}><input aria-label="Nombre de sala" placeholder="Nombre" value={name} onChange={event => setName(event.target.value)} /><input aria-label="Capacidad" type="number" min="1" placeholder="Capacidad" value={capacity} onChange={event => setCapacity(event.target.value)} /><button>Crear sala</button></form>{loading ? <p>Cargando salas...</p> : <table><thead><tr><th>ID</th><th>Nombre</th><th>Capacidad</th><th>Activa</th></tr></thead><tbody>{rooms.map(room => <tr key={room.id}><td>{room.id}</td><td>{room.name}</td><td>{room.capacity}</td><td>{room.active ? 'Sí' : 'No'}</td></tr>)}{rooms.length === 0 && <tr><td colSpan="4">No hay salas cargadas.</td></tr>}</tbody></table>}</section>;
+  return <section><h2>Salas</h2><p>Creá y consultá las salas disponibles para reservar.</p>{message && <p role="alert">{message}</p>}<form onSubmit={submit}><input aria-label="Nombre de sala" placeholder="Nombre" value={name} onChange={event => setName(event.target.value)} /><input aria-label="Capacidad" type="number" min="1" placeholder="Capacidad" value={capacity} onChange={event => setCapacity(event.target.value)} /><button>Crear sala</button></form>{loading ? <p>Cargando salas...</p> : <table><thead><tr><th>ID</th><th>Nombre</th><th>Capacidad</th><th>Activa</th><th>Acciones</th></tr></thead><tbody>{rooms.map(room => <tr key={room.id}><td>{room.id}</td><td>{room.name}</td><td>{room.capacity}</td><td>{room.active ? 'Sí' : 'No'}</td><td><button aria-label={'Borrar ' + room.name} onClick={() => remove(room.id)}>Borrar</button></td></tr>)}{rooms.length === 0 && <tr><td colSpan="5">No hay salas cargadas.</td></tr>}</tbody></table>}</section>;
 }

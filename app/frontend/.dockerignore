@@ -8,3 +8,5 @@ npm-debug.log*
 *.log
 *.tmp
 *.temp
+playwright-report/
+test-results/
