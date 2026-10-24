@@ -23,7 +23,7 @@ export function RoomsPage() {
   const submit = async event => {
     event.preventDefault();
     setMessage('');
-    try { await api.createRoom({ title: name, capacity: Number(capacity), active: true }); setName(''); setCapacity(''); load(); }
+    try { await api.createRoom({ name, capacity: Number(capacity), active: true }); setName(''); setCapacity(''); load(); }
     catch (error) { setMessage(error.message); }
   };
 
