@@ -19,3 +19,13 @@ coverage/
 npm-debug.log*
 playwright-report/
 test-results/
+
+# TP8: estado, providers descargados, valores locales y planes con secretos
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log

@@ -177,3 +177,35 @@ QA es compartido: otro merge puede cambiar la imagen mientras corren las pruebas
 Usé Codex para entender la consigna y ayudar con configuración, pruebas, botón de borrado y documentación. Lo verifiqué con los unitarios, el build, las seis pruebas locales con PostgreSQL, los reportes y las corridas reales en QA. Hice personalmente los commits, pushes y las operaciones en GitHub y Render. El PR #26 sigue abierto sin cambios.
 
 Falta integrar y desplegar este cierre documental y crear el tag y la release `v7.0.0` sobre el commit que quede activo en PROD, comprobándolo en Deployments y Events.
+
+## TP8 — Infraestructura como Código
+
+Elegí Terraform con Neon `kislerdm/neon` 0.18.0 y Render `render-oss/render`
+1.9.1, fijados en `infra/main.tf` y `.terraform.lock.hcl`. Preprod usa recursos
+nuevos y las imágenes del commit de `v7.0.0`; QA y PROD quedan fuera de esta
+configuración. La conexión a la base y la URL del backend se derivan de los
+recursos creados. El estado es local y está ignorado por Git.
+
+El backend del TP7 no crea tablas al arrancar y su imagen no incluye las
+migraciones. Agregué un `terraform_data` que ejecuta el SQL existente con un
+contenedor temporal de PostgreSQL antes de crear la API, sin reconstruir las
+imágenes; requiere Docker y PowerShell locales. Neon exigió `org_id`, que agregué
+como configuración sin secretos, y fijé su región en Ohio al observar que el
+valor por defecto variaba entre creaciones. Corregí las comillas del provisioner
+para admitir la ruta de Windows con espacios.
+Tras recrear los servicios hubo 502 y timeouts transitorios durante su arranque;
+esperé su estado Live y comprobé nuevamente la API y el catálogo en navegador.
+
+Usé Codex para interpretar la consigna y preparar HCL, configuración y
+documentación. Verifiqué fmt/validate, imágenes de GHCR, exclusiones de Git,
+creación real, health, consulta de salas, seis pruebas del TP7 sin reintentos y
+una reserva creada desde el frontend que persistió al recargar. El segundo plan
+dio No changes; borrar la base a mano produjo un plan de reparación que restauró
+también las tablas. Una base ajena al HCL no produjo cambios y se eliminó
+manualmente. prevent_destroy rechazó un plan destructivo y después se retiró.
+QA y PROD conservaron sus IDs y sus cuatro URLs respondieron 200 tras destruir
+preprod. Ensayé dos ciclos destroy/apply; la configuración final volvió a dar
+No changes y a mostrar las salas en navegador. Dejé preprod destruido al cerrar
+la sesión. El estado contiene secretos y permanece fuera de Git. Falta cerrar
+la entrega mediante PR, tag y Release v8.0.0. Los commits y push los hago
+personalmente. El PR #26 permanece abierto y no se modifica para este trabajo.
