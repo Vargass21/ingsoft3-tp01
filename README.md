@@ -99,6 +99,29 @@ Esto no reemplaza protección contra DDoS en la infraestructura. Para varias ins
 límites por usuario se necesita un almacenamiento compartido y una identidad o cadena de
 proxies verificada. Un abuso del propio health puede agotar su cupo y generar una alerta del monitor.
 
+## Observabilidad con Sentry (TP9)
+
+El backend usa `@sentry/node`. `npm start` y `npm run dev` precargan
+`src/instrument.js` antes de Express y PostgreSQL para instrumentar las solicitudes
+y las consultas. Configurar `SENTRY_DSN` y `SENTRY_ENVIRONMENT=production` en el
+backend de PROD en Render. Sin DSN, no se inicializa el SDK. La integración Express
+del SDK captura errores antes de que el manejador JSON de la aplicación responda.
+
+El frontend usa `@sentry/react`, Browser Tracing y los manejadores de errores de
+React 19. Su DSN público está en `app/frontend/src/sentry.js`.
+El hostname identifica el entorno, de modo que la
+misma imagen puede usarse en QA y PROD. El DSN no permite leer ni administrar Sentry.
+
+Se muestrea el 100 % de las trazas para el ejercicio (`tracesSampleRate: 1.0`).
+No se habilitan Session Replay ni el envío predeterminado de datos personales.
+La validación final requiere datos reales: un error en Issues, uso y P95 por operación
+en producción. La instalación o un build exitoso no demuestran recepción de telemetría.
+
+Para la demostración temporal, configurar `TP9_DEMO_ERROR_ENABLED=true` en el backend
+de producción y visitar `/api/falla`: devuelve 500 con un mensaje genérico y envía la
+excepción a Sentry. La ruta no se registra sin esa variable. Después de verificarla,
+desactivar la variable y retirar la ruta mediante otro PR antes de cerrar el TP9.
+
 ## Reglas de negocio
 
 1. La finalización debe ser posterior al inicio.

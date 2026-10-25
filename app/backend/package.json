@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
+    "dev": "node --watch --import ./src/instrument.js src/server.js",
+    "start": "node --import ./src/instrument.js src/server.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "db:init": "node src/db/runMigration.js"
   },
   "dependencies": {
+    "@sentry/node": "^11.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
