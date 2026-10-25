@@ -117,10 +117,10 @@ No se habilitan Session Replay ni el envío predeterminado de datos personales.
 La validación final requiere datos reales: un error en Issues, uso y P95 por operación
 en producción. La instalación o un build exitoso no demuestran recepción de telemetría.
 
-Para la demostración temporal, configurar `TP9_DEMO_ERROR_ENABLED=true` en el backend
-de producción y visitar `/api/falla`: devuelve 500 con un mensaje genérico y envía la
-excepción a Sentry. La ruta no se registra sin esa variable. Después de verificarla,
-desactivar la variable y retirar la ruta mediante otro PR antes de cerrar el TP9.
+La demostración se realizó con una ruta temporal `/api/falla`, que produjo un error
+500 registrado en Sentry en producción. Esa ruta se retiró del código después del ejercicio.
+Eliminar también `TP9_DEMO_ERROR_ENABLED` del backend en Render: ya no se utiliza.
+El monitor externo de `/api/health` debe permanecer pausado al finalizar el ejercicio.
 
 ## Reglas de negocio
 
