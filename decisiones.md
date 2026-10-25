@@ -185,3 +185,13 @@ Elegí Terraform con los providers Neon (`kislerdm/neon` 0.18.0) y Render (`rend
 El problema fue que la base nueva no tenía tablas: la imagen del backend del TP7 no incluía las migraciones ni las creaba al arrancar. Lo resolvimos agregando un paso en Terraform que ejecuta el SQL existente con un contenedor temporal de PostgreSQL antes de crear la API. Comprobamos la solución consultando las salas y creando una reserva desde el frontend.
 
 Usé Codex para entender la consigna, preparar Terraform y corregir los problemas. Codex ejecutó las verificaciones: pasaron las seis pruebas del TP7 y una reserva creada desde el frontend persistió al recargar. También comprobó que el segundo plan no propusiera cambios, que Terraform reparara la base borrada a mano y que preprod pudiera destruirse y recrearse. QA y producción siguieron funcionando. Dejamos preprod destruido para liberar cuota. Los commits y push los hice yo; el PR #26 sigue abierto sin cambios.
+
+## TP9 — DevSecOps y observabilidad
+
+Integré el [PR #43 de Dependabot](https://github.com/Vargass21/ingsoft3-tp01/pull/43), que actualiza `actions/checkout` de v6 a v7. Lo acepté después de revisar los cambios y comprobar que el pipeline estaba en verde. Las restricciones nuevas no afectaban los eventos que usa mi workflow.
+
+El monitor tardó 5 minutos en avisarme: suspendí el backend a las 22:52 y recibí DOWN a las 22:57. Lo reanudé y recibí UP a las 23:02; después pausé el monitor. En Sentry, crear reservas fue lo más lento (`POST /api/reservations`, P95 de 195,17 ms). Consultarlas y cambiar su estado empataron como las operaciones de negocio más usadas, con 0,0333 solicitudes por minuto cada una. Como había pocos datos, creé la [tarjeta #61](https://github.com/Vargass21/ingsoft3-tp01/issues/61) para investigar con una muestra mayor.
+
+CodeQL detectó que el health consultaba la base sin limitar las solicitudes. Lo resolvimos agregando límites y comprobamos que CodeQL marcara la alerta como corregida. En Sentry al principio solo aparecía QA: verificamos que producción enviara datos y, al actualizar el panel, apareció también PROD. Registramos el error de prueba y luego retiramos la ruta que lo provocaba.
+
+Usé Codex para entender la consigna y ayudar con el código, la configuración y esta documentación. Lo verificamos con pruebas, builds y los resultados reales en GitHub, UptimeRobot y Sentry. Los commits y push los hago yo. El PR #26 sigue abierto y sin cambios.
