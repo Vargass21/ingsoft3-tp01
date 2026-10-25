@@ -84,6 +84,21 @@ Para ejecutar el backend local contra PostgreSQL, iniciá solo la base con `dock
 
 En desarrollo local, Vite informa la URL del frontend, normalmente http://localhost:5173. El SQL reproducible está en `app/backend/migrations/001_init.sql` e incluye Sala A, Sala B y Sala C.
 
+## Límites de solicitudes (TP9)
+
+La API usa `express-rate-limit` antes de las operaciones de base de datos. El endpoint
+`/api/health` (GET y HEAD) admite 60 solicitudes por minuto. Salas y reservas comparten
+otro cupo de 300 solicitudes por minuto. Al superarlo se responde `429`, con un error JSON
+`RATE_LIMIT_EXCEEDED` y el encabezado `Retry-After` para indicar cuánto esperar.
+
+Los cupos son globales por proceso, compartidos entre usuarios, para proteger los recursos
+de esta aplicación académica de una instancia. No se usan cabeceras de IP para decidir el
+cupo: funciona igual con acceso directo, nginx o Render. El health tiene un cupo independiente
+del tráfico de negocio. El almacenamiento es en memoria y se reinicia con el backend.
+Esto no reemplaza protección contra DDoS en la infraestructura. Para varias instancias o
+límites por usuario se necesita un almacenamiento compartido y una identidad o cadena de
+proxies verificada. Un abuso del propio health puede agotar su cupo y generar una alerta del monitor.
+
 ## Reglas de negocio
 
 1. La finalización debe ser posterior al inicio.
